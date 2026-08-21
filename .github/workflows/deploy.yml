@@ -1,7 +1,9 @@
 # Pubblica la root su GitHub Pages a ogni push su main.
 # Il progetto è statico (nessun build step): si carica l'albero così com'è.
-# configure-pages con enablement:true imposta da solo la Source su
-# "GitHub Actions", evitando che la pipeline legacy da branch si sovrapponga.
+#
+# Pages è già impostato su build_type "workflow" lato repository. Non si usa
+# `enablement: true` su configure-pages: con i permessi di default di Actions
+# a "read" quel passo fallisce, perché il GITHUB_TOKEN non può creare Pages.
 name: Deploy to GitHub Pages
 
 on:
@@ -27,8 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
