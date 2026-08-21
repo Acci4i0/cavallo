@@ -1,0 +1,377 @@
+/**
+ * style.css — ogni valore ha il riferimento a /research/ANIMATION_SPEC.md.
+ *
+ * FONT: l'originale usa NEXT Mono Thin, un font commerciale su licenza. Non è
+ * incluso e non va scaricato da lì. Qui c'è uno stack monospace di sistema come
+ * SEGNAPOSTO DICHIARATO. Metriche (9px / -0.02em / 180%) sono quelle misurate:
+ * sostituendo il font con il tuo, il resto non cambia.
+ */
+
+:root {
+  --font-body: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; /* placeholder */
+  --black: #000;
+  --white: #fff;
+  --bg: #f9f9f9;              /* §G5 · C0:474 */
+  --margin: 24px;             /* §G5 · C0:147 */
+  --gap: 24px;                /* §E2 · C0:148 */
+  --columns: 10;              /* §E2 · C0:149 */
+  color-scheme: light;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --margin: 20px;           /* §G5 · C0:154 */
+    --gap: 16px;              /* §E2 · C0:155 */
+    --columns: 4;             /* §E2 · C0:156 */
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, .05); /* §G5 · C0:243 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--black);
+  font-family: var(--font-body);
+  font-size: 9px;             /* §G5 · C0:262 — fisso a ogni viewport, no clamp/vw */
+  letter-spacing: -.02em;     /* §G5 · C0:265 */
+  line-height: 180%;          /* §G5 · C0:266 */
+  text-transform: uppercase;
+  overflow: hidden;           /* §A — la home non scrolla */
+}
+
+a, button { touch-action: manipulation; }
+
+/* ── Layer (§E) ───────────────────────────────────────────────────────────── */
+
+.main-wrapper {
+  position: fixed;
+  inset: 0;
+  transition: opacity .6s ease;  /* §E · C0:824-826 */
+}
+
+.view-layer {
+  position: fixed;
+  inset: 0;
+  opacity: 0;                    /* §E · C0:814-816 */
+  pointer-events: none;
+  transition: opacity .4s ease;  /* §E1 — verificato per fitting: 396 ms, RMS 0.0145 */
+}
+
+.view-layer.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ui-layer { transition: opacity .6s ease; } /* §E · C0:808-810 */
+
+/* ── Pixel grid (§B) ──────────────────────────────────────────────────────── */
+
+.pixel-grid { position: fixed; inset: 0; }
+
+.pixel-grid canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;                  /* §G1 — cursore NATIVO, nessun cursore custom */
+}
+
+/* ── Navbar (§D, §G5) ─────────────────────────────────────────────────────── */
+
+.navbar {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  align-items: flex-start;
+  padding: 13px var(--margin) 10px var(--margin); /* §G5 · C0:466 */
+}
+
+/* Scrim: rampa di --bg con alpha decrescente (§G5 · C0:474) */
+.navbar::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 215%;                  /* §D · C0:476 */
+  pointer-events: none;
+  z-index: -1;
+  transition: height .3s ease;   /* §D · C0:482 */
+  background: linear-gradient(180deg,
+    #f9f9f9 0%, #f9f9f9fc 8.1%, #f9f9f9f3 15.5%, #f9f9f9e4 22.5%,
+    #f9f9f9d2 29%, #f9f9f9bd 35.3%, #f9f9f9a5 41%, #f9f9f98c 47.1%,
+    #f9f9f973 52.9%, #f9f9f95a 58.8%, #f9f9f942 64.7%, #f9f9f92d 71%,
+    #f9f9f91b 77.5%, #f9f9f90c 84.5%, #f9f9f903 91.9%, #f9f9f900 100%);
+}
+
+.navbar.filters-open::after { height: 260%; } /* §D · C0:486 */
+
+.navbar a { color: inherit; text-decoration: none; }
+.navbar__logo { grid-column: 1 / span 2; white-space: nowrap; }
+.navbar__link_works { grid-column: 3 / span 1; }
+.navbar__link_info { grid-column: 4 / span 1; }
+
+.navbar__link_works,
+.navbar__link_info { opacity: 1; transition: opacity .2s ease; } /* §E · C0:496 */
+.navbar__link_works.active,
+.navbar__link_info.active { opacity: .6; }
+
+@media (hover: hover) and (min-width: 1024px) {
+  .navbar__link_works:not(.active):hover,
+  .navbar__link_info:not(.active):hover { opacity: .8; }
+}
+
+/* ── Filtri (§D) ──────────────────────────────────────────────────────────── */
+
+.navbar__list {
+  grid-column: 6 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;                     /* §D · C0:449-451 */
+}
+
+.navbar__filter-items { display: flex; flex-direction: column; }
+
+/* `display: flex` sulla classe batte per specificità la regola UA di [hidden],
+   quindi il pannello restava sempre visibile. Trovato dal diff di Fase 3:
+   sull'originale lo scrim parte da 88px, sul clone era già a 249px. */
+.navbar__filter-items[hidden] { display: none; }
+
+.navbar__filters,
+.filter {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  text-align: left;
+  opacity: 1;
+  transition: opacity .2s ease;  /* §D · C0:433-436 — SOLO hover/active, non l'ingresso */
+}
+
+.filter.active { opacity: .6; }  /* §D · C0:444 */
+
+@media (hover: hover) and (min-width: 1024px) {
+  .filter:hover { opacity: .8; } /* §D · C0:439-441 */
+}
+
+/* §D1 — nessuno stagger, nessun fade d'ingresso: misurato, getAnimations() vuoto */
+
+/* ── View toggle (§E) ─────────────────────────────────────────────────────── */
+
+.view {
+  grid-column: 8 / span 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.view__btn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 17.5px;                        /* §E · C0:351,359 */
+  height: 17.5px;
+  outline: .5px solid var(--black);     /* §E · C0:354 */
+  opacity: 1;
+  transform: translateY(.5px);          /* §E · C0:356 */
+  /* QUIRK RIPRODOTTO (§E): nell'originale un `transition: transform .2s`
+     sovrascrive il `transition: opacity .2s ease` della riga precedente.
+     Risultato: l'opacity di questi bottoni NON è animata. Voluto. */
+  transition: transform .2s;            /* §E · C0:357-358 */
+}
+
+.view__btn.active {
+  border: none;
+  opacity: .6;
+  transform: translateY(.5px) scale(.85); /* §E · C0:368-372 */
+}
+
+@media (hover: hover) and (min-width: 1024px) {
+  .view__btn:hover { opacity: .8; }     /* §E · C0:363-365 */
+}
+
+.view__btn .square { width: 6px; height: 6px; background: var(--black); } /* C0:325-329 */
+
+/* ── Zoom (§C) ────────────────────────────────────────────────────────────── */
+
+.zoom {
+  grid-column: 10 / span 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;                             /* §C · C0:381 */
+}
+
+.zoom button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  transition: opacity .25s ease, transform .15s ease; /* §C · C0:397 */
+}
+
+@media (hover: hover) and (min-width: 1024px) {
+  .zoom button:hover { opacity: .6; }   /* §C · C0:400-402 */
+}
+
+.zoom button:active {
+  transform: scale(.8);
+  transition: transform .05s ease;      /* §C · C0:408 */
+}
+
+.menu-label { margin-right: 4px; }      /* §C · C0:411 */
+
+/* ── Natural grid (§E2) ───────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), 1fr); /* §E2 · C0:198 */
+  gap: var(--gap);
+  align-items: start;                    /* §E2 · C0:571 */
+  background-color: var(--white);
+  position: fixed;
+  width: 100vw;
+  height: 100%;
+  overflow-y: auto;                      /* §E2 · C0:574 — scroll NATIVO sul contenitore */
+  padding: 60px var(--margin) var(--margin); /* §E2 · C0:575 */
+  z-index: -1;
+  margin: 0;
+}
+
+/* §E2 · C0:186-193 — utility separata, come nell'originale */
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (max-width: 768px) {
+  .grid { padding: 60px var(--margin) 60px; } /* §E2 · C0:583 */
+}
+
+/* Parallasse per-item: il JS scrive solo --scroll-progress e --extra-space (§E2) */
+.grid a {
+  display: block;
+  transform: translateY(calc(var(--scroll-progress, 0) * var(--extra-space, 0px))); /* §E2 · C0:588 */
+  will-change: transform;                /* §E2 · C0:589 */
+}
+
+@media (hover: hover) and (min-width: 1024px) {
+  .grid a:hover { opacity: .5; }         /* §E2 · C0:592-596 */
+}
+
+.grid a.inactive {
+  filter: grayscale(1) contrast(4);      /* §E2 · C0:598-601 */
+  opacity: .05;
+  pointer-events: none;
+}
+
+.image-container { display: block; max-width: 100%; max-height: 100%; overflow: hidden; }
+
+.grid img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity .3s ease;          /* §E2 · CN:12-19 */
+}
+
+.grid img.loaded { opacity: 1; }
+
+/* ── Info overlay (§F) ────────────────────────────────────────────────────── */
+
+.info {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 9;                            /* §F · css/3.BGONRHO9.css:1-11 */
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: calc(var(--margin) * 2);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s ease;          /* §E1 */
+}
+
+.info.active { opacity: 1; pointer-events: auto; }
+
+.info__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;                             /* §F */
+  width: 800px;
+  max-width: 100%;
+  white-space: pre-line;
+  transform: translateY(-10%);
+}
+
+@media (max-width: 768px) {
+  .info__content {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.info__content a { color: inherit; text-decoration-thickness: .5px; }
+
+/* ── Tooltip di intro (§G3) ───────────────────────────────────────────────── */
+
+.intro-tooltip {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--white);
+  color: var(--black);
+  padding: 8px 16px;                     /* §G3 · C0:651-660 */
+  line-height: 100%;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  font: inherit;
+  animation: tooltip-fade 4s ease forwards; /* §G3 · C0:652 */
+}
+
+@keyframes tooltip-fade {                /* §G3 · C0:663-670 */
+  0%   { opacity: 0; }
+  15%  { opacity: .9; }
+  70%  { opacity: .9; }
+  100% { opacity: 0; }
+}
+
+.placeholder-note {
+  position: fixed;
+  left: var(--margin);
+  bottom: 10px;
+  z-index: 20;
+  opacity: .45;
+  pointer-events: none;
+}

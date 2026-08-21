@@ -1,0 +1,15 @@
+# dipendenze
+node_modules/
+
+# ambiente / editor / os
+.DS_Store
+*.local
+*.log
+.vscode/
+.idea/
+
+# materiale di riferimento del sito originale (bundle di produzione, DOM,
+# JSON della maschera, registrazioni): non va pubblicato in nessun caso
+_reference/
+research/bundles/
+research/raw/

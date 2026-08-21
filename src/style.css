@@ -1,0 +1,101 @@
+/**
+ * Schermo intero, nessuna interfaccia.
+ * Geometria della griglia: nessun valore qui — arriva dalla matrice via
+ * variabili CSS impostate da replica.js (_reference/EXTRACTION.md §2).
+ */
+
+:root { --bg: #ffffff; color-scheme: light; }
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;              /* pinch e drag li gestisce il JS */
+}
+
+/* 100dvh copre la barra dinamica di Safari su iPhone; il fallback resta 100vh */
+#stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  cursor: grab;
+}
+#stage.dragging { cursor: grabbing; }
+
+/* Ancorato a 0,0: la posizione la calcola interamente il JS (tx/ty).
+   Con il centraggio flex del contenitore il posizionamento risultava doppio
+   e la sagoma finiva fuori schermo. */
+#grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Cella: lato = cellSize − gap. Posizionata con translate, mai top/left. */
+.cell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--cell);
+  height: var(--cell);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: translate(0, 0);
+  will-change: transform, opacity;
+  /* Dissolvenza delle celle non selezionate quando una foto è aperta.
+     Durata ed ease presi dalla 3Dgallery dell'utente (config.js FRAME_FADE). */
+  transition: opacity 1s cubic-bezier(0.43, 0.19, 0.02, 1);
+}
+.cell[hidden] { display: none; }
+
+/* Con una foto aperta tutte le altre svaniscono */
+#stage.focus .cell { opacity: 0; }
+#stage.focus .cell.picked { opacity: 0; }
+
+/* ── Apertura foto ────────────────────────────────────────────────────────── */
+
+#viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--bg);
+  opacity: 0;
+  /* BACKGROUND della 3Dgallery: 0.2 s linear */
+  transition: opacity 0.2s linear;
+}
+#viewer.on { opacity: 1; }
+#viewer[hidden] { display: none; }
+
+/* L'immagine parte dal rettangolo della cella cliccata e vola al centro:
+   FOCUS della 3Dgallery — 1.2 s, cubic-bezier(0.43, 0.19, 0.02, 1). */
+#viewerImg {
+  position: absolute;
+  transform-origin: 0 0;
+  object-fit: cover;
+  will-change: transform, width, height;
+  transition:
+    transform 1.2s cubic-bezier(0.43, 0.19, 0.02, 1),
+    width     1.2s cubic-bezier(0.43, 0.19, 0.02, 1),
+    height    1.2s cubic-bezier(0.43, 0.19, 0.02, 1),
+    left      1.2s cubic-bezier(0.43, 0.19, 0.02, 1),
+    top       1.2s cubic-bezier(0.43, 0.19, 0.02, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell, #viewer, #viewerImg { transition-duration: 0.01ms !important; }
+}

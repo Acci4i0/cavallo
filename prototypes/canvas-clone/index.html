@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Studio Placeholder</title>
+  <meta name="description" content="Rebuild — contenuti segnaposto">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="main-wrapper">
+
+    <!-- Layer 1 — Pixel Grid (canvas 2D). §B -->
+    <div class="view-layer" data-layer="pixel">
+      <div class="pixel-grid">
+        <canvas></canvas>
+        <!-- §G3 — 4s ease forwards, keyframe 0/15/70/100.
+             Compare all'ingresso in IDLE, non al load: misurato in Fase 3. -->
+        <div class="intro-tooltip" hidden>Trascina per navigare</div>
+      </div>
+    </div>
+
+    <!-- Layer 2 — Natural Grid (CSS grid reale, scroll nativo). §E2 -->
+    <div class="view-layer" data-layer="natural">
+      <div class="grid hide-scrollbar" data-natural-grid></div>
+    </div>
+
+  </div>
+
+  <!-- UI -->
+  <div class="ui-layer">
+    <nav class="navbar">
+      <a class="navbar__logo" href="#" data-site-title>Studio Placeholder</a>
+      <a class="navbar__link_works active" href="#">Works</a>
+      <a class="navbar__link_info" href="#">Info</a>
+
+      <!-- §D — nessuno stagger all'apertura: misurato -->
+      <div class="navbar__list">
+        <button type="button" class="navbar__filters" data-filters-toggle aria-expanded="false">Filters +</button>
+        <div class="navbar__filter-items" data-filters-panel hidden></div>
+      </div>
+
+      <!-- §E — due stati, crossfade 0.4s ease -->
+      <div class="view">
+        <span class="menu-label">View</span>
+        <button type="button" class="view__btn" data-view="pixel" aria-label="Pixel Grid view">
+          <span class="square"></span>
+        </button>
+        <button type="button" class="view__btn" data-view="natural" aria-label="Natural Grid view">
+          <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true">
+            <rect x="0" y="0" width="4" height="4" fill="currentColor"/>
+            <rect x="5" y="0" width="4" height="2" fill="currentColor"/>
+            <rect x="0" y="5" width="4" height="4" fill="currentColor"/>
+            <rect x="5" y="3" width="4" height="6" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- §C — due bottoni, step ×1.5 / ÷1.5. NON è uno slider.
+           Ordine + poi −, come l'originale (verificato sul DOM in Fase 3). -->
+      <div class="zoom">
+        <span class="menu-label">Zoom</span>
+        <button type="button" data-zoom-in aria-label="Zoom in" title="Zoom in">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none">
+            <rect x=".25" y=".25" width="17.5" height="17.5" stroke="currentColor" stroke-width=".5"/>
+            <path d="M8.91 5.21h.5v3.7h3.7v.5h-3.7v3.7h-.5v-3.7h-3.7v-.5h3.7z" fill="currentColor"/>
+          </svg>
+        </button>
+        <button type="button" data-zoom-out aria-label="Zoom out" title="Zoom out">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none">
+            <rect x=".25" y=".25" width="17.5" height="17.5" stroke="currentColor" stroke-width=".5"/>
+            <path d="M5.21 8.91h7.6v.5h-7.6z" fill="currentColor"/>
+          </svg>
+        </button>
+        <!-- L'originale NON mostra la percentuale: elemento tenuto ma non
+             renderizzato, serve solo agli script di verifica. -->
+        <span data-zoom-label hidden>150</span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- §F — overlay fixed sopra il canvas, che resta vivo sotto -->
+  <section class="info" data-info>
+    <div class="info__content">
+      <p data-site-title>Studio Placeholder</p>
+      <p>Testo segnaposto. Sostituire con i contenuti reali.
+Nessun testo, immagine o marchio proviene dal sito di riferimento.</p>
+      <p><a href="#">placeholder@example.com</a></p>
+    </div>
+  </section>
+
+  <div class="placeholder-note">Contenuti segnaposto — immagini nere generate localmente</div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
