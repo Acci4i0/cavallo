@@ -6,8 +6,14 @@ ospitano l'immagine. Nessuna interfaccia — solo la sagoma, a tutto schermo su
 desktop e iPhone. Il galoppo non si ferma mai.
 
 Le celle mostrano 158 fotografie scattate in Puglia, in due livelli di dettaglio:
-miniature a 320 px (`assets/photos/thumb`, 5.3 MB) alla scala di partenza, e
-versioni a 900 px (`assets/photos/hd`, 28 MB) quando si zooma. Le HD si scaricano
+ritagli quadrati a 320 px (`assets/photos/thumb`, 5.8 MB) alla scala di partenza,
+e a 1024 px (`assets/photos/hd`, 37 MB) quando si zooma.
+
+I livelli della griglia sono **quadrati** e non fotogrammi interi. Le celle sono
+quadrate e usano `background-size: cover`, quindi di un'immagine 4:3 il lato
+lungo viene comunque scartato: ritagliando a monte, ogni pixel scaricato finisce
+a schermo. Il lato utile passa da 675 a 1024 px — la stessa risoluzione che il
+sito di riferimento serve per celle di quella dimensione. Le HD si scaricano
 **solo** oltre la soglia, quindi all'apertura la pagina carica 5.3 MB. Esiste un
 terzo livello (`assets/photos/full`, 134 MB) che serve unicamente al visore: si
 scarica una immagine alla volta, quella che si apre.
@@ -67,9 +73,14 @@ stabile, ed è la condizione che rende l'apertura possibile.
 | frecce, `←` `→` | fotografia precedente / successiva |
 | click, tap o `Esc` | si chiude |
 
-Passando da una fotografia all'altra **lo sfondo la segue**: si cerca la cella
-che porta l'immagine di destinazione più vicina al centro dello schermo e ci si
-sposta sopra, così la sagoma dietro accompagna il cambio invece di restare ferma.
+Con una fotografia aperta la griglia **resta visibile** dietro, desaturata, sotto
+un velo chiaro — come sul riferimento, dove il canvas prende `grayscale(1)` sulle
+rotte di dettaglio. Passando da una fotografia all'altra **lo sfondo la segue**:
+si cerca la cella che porta l'immagine di destinazione più vicina al centro dello
+schermo e ci si sposta sopra, così la sagoma accompagna il cambio.
+
+La fotografia non tocca mai i bordi: il margine lascia lo spazio alle frecce, che
+altrimenti finiscono sopra l'immagine e su scatti scuri diventano invisibili.
 
 Nessuna didascalia: solo le frecce.
 

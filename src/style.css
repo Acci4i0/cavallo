@@ -66,26 +66,48 @@ html, body {
    Su touch non si vede, ed e l'unico segnale visivo di tutta la pagina. */
 #stage.still .cell { cursor: zoom-in; }
 
+/* Sfondo TRASPARENTE: la griglia resta visibile dietro e la si vede scorrere
+   quando si cambia fotografia. Con il bianco pieno di prima non si vedeva
+   niente. Nel sito di riferimento la griglia resta visibile e desaturata. */
 #viewer {
   position: fixed;
   inset: 0;
   z-index: 10;
-  background: var(--bg);
+  background: transparent;
   opacity: 0;
   cursor: zoom-out;
   transition: opacity 0.25s linear;
 }
+
+/* Velo chiaro sopra la griglia: stacca la fotografia dallo sfondo senza
+   nasconderlo. */
+#viewer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  pointer-events: none;
+}
+
+/* Griglia desaturata mentre una fotografia e aperta — come sul riferimento,
+   dove il canvas prende filter: grayscale(1) sulle rotte di dettaglio. */
+#stage.viewing #grid { filter: grayscale(1); }
+#grid { transition: filter 0.4s ease; }
 #viewer.on { opacity: 1; }
 #viewer[hidden] { display: none; }
 
 /* L'immagine e gia nella sua geometria finale; il transform la sovrappone alla
    cella di partenza e poi torna all'identita. FLIP: si anima solo transform,
    nessun reflow. Tempi e curva dalla 3Dgallery (FOCUS). */
+/* La fotografia non tocca mai i bordi: il margine lascia lo spazio alle frecce,
+   che altrimenti finiscono sopra l'immagine e su scatti scuri spariscono. */
 #viewerImg {
   position: absolute;
   transform-origin: 0 0;
   object-fit: cover;
   will-change: transform;
+  z-index: 1;
+  box-shadow: 0 2px 40px rgba(0, 0, 0, 0.18);
   transition: transform 1.2s cubic-bezier(0.43, 0.19, 0.02, 1);
 }
 
@@ -115,8 +137,8 @@ html, body {
 }
 #viewer button:hover { opacity: 1; }
 #viewer button:active { transform: translateY(-50%) scale(0.9); }
-#prev { left: max(8px, env(safe-area-inset-left)); }
-#next { right: max(8px, env(safe-area-inset-right)); }
+#prev { left: calc(8px + env(safe-area-inset-left)); }
+#next { right: calc(8px + env(safe-area-inset-right)); }
 
 /* Cambio di fotografia dentro il visore: dissolvenza breve, niente volo */
 #viewerImg.swap { opacity: 0; transition: opacity 0.18s linear; }

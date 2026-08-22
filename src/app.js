@@ -189,10 +189,16 @@ function updateMotion() {
 
 /* ── Visore ───────────────────────────────────────────────────────────────── */
 
-/** Rettangolo dell'immagine contenuta nel viewport, a proporzioni intatte. */
+/**
+ * Rettangolo dell'immagine, a proporzioni intatte e STACCATO dai bordi.
+ * Il margine orizzontale deve lasciar passare le frecce (44 px piu aria),
+ * altrimenti finiscono sopra la fotografia e su scatti scuri spariscono.
+ */
 function containRect(w, h) {
   const vw = window.innerWidth, vh = window.innerHeight;
-  const k = Math.min(vw / w, vh / h);
+  const mx = Math.max(64, Math.min(vw * 0.14, 140));
+  const my = Math.max(40, Math.min(vh * 0.09, 90));
+  const k = Math.min((vw - mx * 2) / w, (vh - my * 2) / h);
   const rw = w * k, rh = h * k;
   return { x: (vw - rw) / 2, y: (vh - rh) / 2, w: rw, h: rh };
 }
@@ -203,6 +209,7 @@ function openPhoto(cell) {
   if (!Number.isFinite(idx)) return;
   opened = cell;
   openedPhoto = idx % PHOTO_COUNT;
+  stage.classList.add('viewing');   // desatura la griglia dietro
 
   const from = cell.getBoundingClientRect();
   const img = new Image();
@@ -233,6 +240,7 @@ function closePhoto() {
   if (!opened) return;
   const cell = opened;
   opened = null;
+  stage.classList.remove('viewing');
   const to = viewerImg.getBoundingClientRect();
   const from = cell.getBoundingClientRect();
   const sx = from.width / to.width, sy = from.height / to.height;
