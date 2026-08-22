@@ -34,10 +34,13 @@ const NAME = (i) => `photo${String((i % PHOTO_COUNT) + 1).padStart(3, '0')}`;
 //
 // A zoom massimo una cella misura ~605 px reali e viene servita a 1536:
 // 2.54x di sovracampionamento, contro l'1.71x del sito di riferimento.
+// Le soglie sono fissate perche il rapporto sorgente/cella non scenda MAI
+// sotto 2.0x. Con thumb a 200 px si arrivava a 320/197 = 1.62x, cioe sotto
+// l'1.71x del sito di riferimento proprio al limite della fascia.
 const TIERS = [
-  { dir: 'thumb', maxCellPx: 200 },
-  { dir: 'hd', maxCellPx: 600 },
-  { dir: 'xl', maxCellPx: Infinity },   // 1536 px nativi: nessuna riduzione
+  { dir: 'thumb', maxCellPx: 160 },     // 320 px  -> minimo 2.00x
+  { dir: 'hd', maxCellPx: 512 },        // 1024 px -> minimo 2.00x
+  { dir: 'xl', maxCellPx: Infinity },   // 1536 px nativi -> 2.54x a zoom massimo
 ];
 
 // I livelli quadrati sono WebP, che a parita di peso ritiene molto piu
