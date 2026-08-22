@@ -15,6 +15,7 @@ const SPEC = {
   FRAME_MS: 100,        // §2 — un fotogramma del galoppo
   DRAG_THRESHOLD: 3,    // §2 — px oltre i quali è trascinamento
   ZOOM_EPS: 1.01,       // tolleranza per considerarsi "alla scala di partenza"
+  OPEN_MS: 1200,        // apertura/chiusura del visore (3Dgallery, FOCUS)
 };
 
 // Fotografie della cartella Puglia. L'elemento DOM cells[n] riceve sempre
@@ -36,6 +37,11 @@ const TIERS = [
 ];
 const SRC = (i, dir) => `assets/photos/${dir}/${NAME(i)}`;
 let tier = TIERS[0];
+
+// Riferimenti al visore
+const viewer = document.getElementById('viewer');
+const viewerImg = document.getElementById('viewerImg');
+let opened = null;   // cella attualmente aperta, o null
 
 /** Lato della cella in pixel REALI del dispositivo, non CSS. */
 function cellDevicePx() {
@@ -123,6 +129,7 @@ function buildPool() {
     const d = document.createElement('div');
     d.className = 'cell';
     d.style.backgroundImage = `url("${SRC(i, tier.dir)}")`;
+    d.dataset.i = String(i);   // la foto della cella si legge da qui, mai dalla posizione
     d.hidden = true;
     frag.appendChild(d);
     cells.push(d);
@@ -168,6 +175,63 @@ function stopGallop() {
 function updateMotion() {
   if (scale > fitScale * SPEC.ZOOM_EPS) stopGallop();
   else startGallop();
+  stage.classList.toggle('still', !gallop);
+}
+
+/* ── Visore ───────────────────────────────────────────────────────────────── */
+
+/** Rettangolo dell'immagine contenuta nel viewport, a proporzioni intatte. */
+function containRect(w, h) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const k = Math.min(vw / w, vh / h);
+  const rw = w * k, rh = h * k;
+  return { x: (vw - rw) / 2, y: (vh - rh) / 2, w: rw, h: rh };
+}
+
+function openPhoto(cell) {
+  if (opened) return;
+  const idx = Number(cell.dataset.i);
+  if (!Number.isFinite(idx)) return;
+  opened = cell;
+
+  const from = cell.getBoundingClientRect();
+  const img = new Image();
+  img.onload = () => {
+    if (opened !== cell) return;
+    const to = containRect(img.naturalWidth, img.naturalHeight);
+    viewerImg.src = img.src;
+    viewerImg.style.left = `${to.x}px`;
+    viewerImg.style.top = `${to.y}px`;
+    viewerImg.style.width = `${to.w}px`;
+    viewerImg.style.height = `${to.h}px`;
+
+    // FLIP: si parte sovrapposti alla cella, si torna all'identita
+    const sx = from.width / to.w, sy = from.height / to.h;
+    viewerImg.style.transition = 'none';
+    viewerImg.style.transform =
+      `translate(${from.left - to.x}px, ${from.top - to.y}px) scale(${sx}, ${sy})`;
+    viewer.hidden = false;
+    void viewerImg.offsetWidth;              // forza il reflow prima di animare
+    viewerImg.style.transition = '';
+    viewer.classList.add('on');
+    viewerImg.style.transform = 'translate(0, 0) scale(1, 1)';
+  };
+  img.src = SRC(idx, 'full');
+}
+
+function closePhoto() {
+  if (!opened) return;
+  const cell = opened;
+  opened = null;
+  const to = viewerImg.getBoundingClientRect();
+  const from = cell.getBoundingClientRect();
+  const sx = from.width / to.width, sy = from.height / to.height;
+  viewerImg.style.transform =
+    `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${sx}, ${sy})`;
+  viewer.classList.remove('on');
+  setTimeout(() => {
+    if (!opened) { viewer.hidden = true; viewerImg.removeAttribute('src'); }
+  }, SPEC.OPEN_MS);
 }
 
 /* ── Input: solo vista ────────────────────────────────────────────────────── */
@@ -182,7 +246,14 @@ function bindInput() {
   }, { passive: false });
 
   stage.addEventListener('pointerdown', (e) => {
-    down = { x: e.clientX, y: e.clientY, tx, ty, moved: false };
+    down = { x: e.clientX, y: e.clientY, tx, ty, moved: false, cell: null };
+    // Il bersaglio si cattura QUI, e solo a griglia ferma. Nella versione
+    // precedente si leggeva al rilascio, con il galoppo in corso: fra tocco e
+    // rilascio gli elementi si erano gia spostati e si apriva un'altra foto.
+    if (!gallop) {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (el && el.classList.contains('cell')) down.cell = el;
+    }
     stage.setPointerCapture(e.pointerId);
     stage.classList.add('dragging');
   });
@@ -194,9 +265,22 @@ function bindInput() {
     if (down.moved) { tx = down.tx + dx; ty = down.ty + dy; applyView(); }
   });
 
-  const release = () => { stage.classList.remove('dragging'); down = null; };
-  stage.addEventListener('pointerup', release);
-  stage.addEventListener('pointercancel', release);
+  stage.addEventListener('pointerup', (e) => {
+    stage.classList.remove('dragging');
+    const d = down;
+    down = null;
+    if (!d || d.moved || !d.cell) return;
+    // Riconferma: sotto il puntatore ci deve essere ANCORA la stessa cella.
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el === d.cell) openPhoto(d.cell);
+  });
+
+  stage.addEventListener('pointercancel', () => {
+    stage.classList.remove('dragging'); down = null;
+  });
+
+  viewer.addEventListener('click', closePhoto);
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
 
   stage.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
@@ -249,6 +333,9 @@ function bindInput() {
     mask: () => MASK, bbox: () => bbox,
     get tier() { return tier.dir; },
     get galloping() { return !!gallop; },
+    get opened() { return opened ? Number(opened.dataset.i) : null; },
+    get viewerSrc() { return (viewerImg.getAttribute('src') || '').split('/').pop(); },
+    openPhoto, closePhoto,
     get zoomFactor() { return scale / fitScale; },
     get cellDevicePx() { return cellDevicePx(); },
   };

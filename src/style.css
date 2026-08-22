@@ -59,3 +59,36 @@ html, body {
   will-change: transform;
 }
 .cell[hidden] { display: none; }
+
+/* ── Visore a schermo intero ──────────────────────────────────────────────── */
+
+/* A galoppo fermo le celle diventano bersagli: il cursore lo segnala.
+   Su touch non si vede, ed e l'unico segnale visivo di tutta la pagina. */
+#stage.still .cell { cursor: zoom-in; }
+
+#viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--bg);
+  opacity: 0;
+  cursor: zoom-out;
+  transition: opacity 0.25s linear;
+}
+#viewer.on { opacity: 1; }
+#viewer[hidden] { display: none; }
+
+/* L'immagine e gia nella sua geometria finale; il transform la sovrappone alla
+   cella di partenza e poi torna all'identita. FLIP: si anima solo transform,
+   nessun reflow. Tempi e curva dalla 3Dgallery (FOCUS). */
+#viewerImg {
+  position: absolute;
+  transform-origin: 0 0;
+  object-fit: cover;
+  will-change: transform;
+  transition: transform 1.2s cubic-bezier(0.43, 0.19, 0.02, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #viewer, #viewerImg { transition-duration: 0.01ms; }
+}

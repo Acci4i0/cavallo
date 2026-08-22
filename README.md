@@ -8,7 +8,9 @@ desktop e iPhone. Il galoppo non si ferma mai.
 Le celle mostrano 158 fotografie scattate in Puglia, in due livelli di dettaglio:
 miniature a 320 px (`assets/photos/thumb`, 5.3 MB) alla scala di partenza, e
 versioni a 900 px (`assets/photos/hd`, 28 MB) quando si zooma. Le HD si scaricano
-**solo** oltre la soglia, quindi all'apertura la pagina carica 5.3 MB.
+**solo** oltre la soglia, quindi all'apertura la pagina carica 5.3 MB. Esiste un
+terzo livello a 1600 px (`assets/photos/full`, 75 MB) che serve unicamente al
+visore: si scarica una immagine alla volta, quella che si apre.
 
 La soglia è sul lato della cella in pixel reali del dispositivo: sopra 200 px la
 miniatura verrebbe ingrandita e si sgranerebbe. A zoom massimo una cella arriva a
@@ -50,6 +52,22 @@ sale fino a 12.5×, lo stesso rapporto fra i limiti misurati.
 **Il galoppo gira solo alla scala di partenza.** Appena si zooma si ferma: con le
 celle immobili si possono guardare le fotografie una a una, che è il motivo per
 cui si zooma. Tornando allo zoom iniziale riparte da solo.
+
+| Gesto (a galoppo fermo) | Effetto |
+|---|---|
+| click o tap su una cella | la fotografia si apre a schermo intero |
+| click, tap o `Esc` | si chiude |
+
+L'apertura è possibile **solo a griglia ferma**, e non è una limitazione
+arbitraria. Con il galoppo in corso gli elementi cambiano posizione ogni 100 ms:
+fra il momento in cui si mira una fotografia e quello in cui si tocca, quella
+cella si è già spostata e sotto il dito ne è arrivata un'altra. La versione
+precedente leggeva il bersaglio al rilascio e apriva sistematicamente
+un'immagine diversa da quella scelta.
+
+Ora il bersaglio si cattura al `pointerdown`, si riconferma al `pointerup` che
+sotto il puntatore ci sia ancora la stessa cella, e la fotografia si legge dal
+`dataset` dell'elemento — mai dalla posizione.
 
 ## Sviluppo
 

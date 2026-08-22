@@ -11,8 +11,13 @@
 </head>
 <body>
   <!-- Nessun elemento di interfaccia: la griglia è generata interamente dalla
-       matrice in src/data/mask-frames.json. Le celle non sono cliccabili. -->
+       matrice in src/data/mask-frames.json. -->
   <main id="stage"><div id="grid"></div></main>
+
+  <!-- Visore a schermo intero. Si apre solo a galoppo fermo, cioe sotto zoom:
+       con le celle in movimento il bersaglio cambierebbe fra il tocco e il
+       rilascio, ed e esattamente il difetto della versione precedente. -->
+  <div id="viewer" hidden><img id="viewerImg" alt=""></div>
 
   <script src="src/app.js"></script>
 </body>
