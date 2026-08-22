@@ -5,30 +5,45 @@ una maschera di occupazione su una griglia **54 × 42**, e le celle accese
 ospitano l'immagine. Nessuna interfaccia — solo la sagoma, a tutto schermo su
 desktop e iPhone. Il galoppo non si ferma mai.
 
-Le celle mostrano 158 fotografie scattate in Puglia, in due livelli di dettaglio:
-ritagli quadrati a 320 px (`assets/photos/thumb`, 5.8 MB) alla scala di partenza,
-e a 1024 px (`assets/photos/hd`, 37 MB) quando si zooma.
+Le celle mostrano 158 fotografie scattate in Puglia, in **WebP**, su tre livelli
+di dettaglio scelti in base al lato della cella in pixel reali:
 
-I livelli della griglia sono **quadrati** e non fotogrammi interi. Le celle sono
-quadrate e usano `background-size: cover`, quindi di un'immagine 4:3 il lato
-lungo viene comunque scartato: ritagliando a monte, ogni pixel scaricato finisce
-a schermo. Il lato utile passa da 675 a 1024 px — la stessa risoluzione che il
-sito di riferimento serve per celle di quella dimensione. Le HD si scaricano
-**solo** oltre la soglia, quindi all'apertura la pagina carica 5.3 MB. Esiste un
-terzo livello (`assets/photos/full`, 134 MB) che serve unicamente al visore: si
-scarica una immagine alla volta, quella che si apre.
+| Livello | Contenuto | Quando | Peso |
+|---|---|---|---|
+| `thumb` | quadrato 320 px | fino a 200 px di cella | 2.4 MB |
+| `hd` | quadrato 1024 px | fino a 600 px | 18.5 MB |
+| `xl` | quadrato 1536 px, **nativo** | oltre 600 px | 42.6 MB |
+| `full` | fotogramma intero | visore, una alla volta | 129.5 MB |
 
-Il terzo livello è a **2048 px**, che è la risoluzione nativa delle sorgenti: non
-c'è margine per andare oltre senza interpolare. Una versione precedente le
-riduceva a 1600 px e a schermo intero si vedeva.
+Ogni livello si scarica solo se si supera la sua soglia: all'apertura la pagina
+carica i soli 2.4 MB di `thumb`.
 
-La soglia è sul lato della cella in pixel reali del dispositivo: sopra 200 px la
-miniatura verrebbe ingrandita e si sgranerebbe. A zoom massimo una cella arriva a
-605 px su desktop retina, coperti dai 675 px di lato corto delle HD.
+I livelli della griglia sono **quadrati** perché le celle lo sono e usano
+`background-size: cover`: di un'immagine 4:3 il lato lungo verrebbe scartato
+comunque, quindi ritagliando a monte ogni pixel scaricato finisce a schermo.
+Nessun livello ingrandisce mai la sorgente.
 
-L'assegnazione è fissa per elemento: l'ennesimo `div` del pool porta sempre la
-stessa fotografia. Il rimescolamento che si vede nasce dal fatto che a ogni
-fotogramma quello stesso elemento finisce in una posizione diversa della sagoma.
+### Nitidezza
+
+A zoom massimo una cella misura 605 px reali e viene servita a 1536:
+**2.54× di sovracampionamento**, contro l'1.71× del sito di riferimento.
+
+La ricodifica è fatta da **Chrome**, non da `sips`. Misurando quanto dettaglio
+sopravvive rispetto a un ideale non compresso:
+
+| Pipeline | Ritenzione |
+|---|---|
+| sito di riferimento, AVIF q75 | 72.6% |
+| `sips` q82 (usato prima) | 77.2% |
+| **Chrome + WebP (attuale)** | **94.8% `hd`, 97.5% `xl`** |
+
+`sips` usa un filtro di ricampionamento scadente: su immagini ricche di dettaglio
+scendeva al 62%. Il livello `xl` è a pixel nativi, quindi non viene ridimensionato
+affatto.
+
+Il tetto residuo è nel materiale: le sorgenti sono 2048×1536 già ricompresse,
+mentre il sito di riferimento parte da originali fino a 69 MP. Con gli originali
+a piena risoluzione i ritagli nascerebbero da 3024 px invece che da 1536.
 
 ## Come funziona
 
@@ -120,13 +135,13 @@ Metti gli originali in una cartella e rigenera le miniature (`sips` è già su
 macOS). I nomi devono essere contigui, da `photo001.jpg` in avanti:
 
 ```bash
-i=0
-find <cartella> -type f -iname '*.jpg' -print0 | sort -z | while IFS= read -r -d '' f; do
-  i=$((i+1)); n=$(printf 'photo%03d.jpg' $i)
-  sips -s format jpeg -s formatOptions 78 -Z 320 "$f" --out "assets/photos/thumb/$n"
-  sips -s format jpeg -s formatOptions 82 -Z 900 "$f" --out "assets/photos/hd/$n"
-done
+node scripts/build-photos.js <cartella>
 ```
+
+Genera tutti e quattro i livelli, deduplica per hash, numera in modo contiguo e
+stampa il valore di `PHOTO_COUNT` da riportare in `src/app.js`. Per `full` copia
+il sorgente senza ricodificarlo quando è già entro 2048 px: ricomprimerlo
+sarebbe una seconda perdita senza alcun guadagno.
 
 Poi allinea `PHOTO_COUNT` in `src/app.js` al numero di file prodotti.
 
@@ -154,8 +169,10 @@ index.html                  la pagina, senza interfaccia
 src/app.js                  maschera, galoppo, zoom, pan
 src/style.css               schermo intero, dvh, safe area
 src/data/mask-frames.json   matrici booleane — generato
-assets/photos/thumb/        158 miniature a 320 px (scala di partenza)
-assets/photos/hd/           158 versioni a 900 px (sotto zoom)
+assets/photos/thumb/        158 ritagli quadrati 320 px (WebP)
+assets/photos/hd/           158 ritagli quadrati 1024 px (WebP)
+assets/photos/xl/           158 ritagli quadrati 1536 px nativi (WebP)
+assets/photos/full/         158 fotogrammi interi (visore)
 assets/gallop/              silhouette sorgente per build-mask.js
 scripts/                    generatori della maschera
 research/                   misure e spec del comportamento

@@ -26,18 +26,23 @@ const SPEC = {
 // vede nasce dal fatto che a ogni fotogramma lo stesso elemento finisce in una
 // posizione diversa della griglia.
 const PHOTO_COUNT = 158;
-const NAME = (i) => `photo${String((i % PHOTO_COUNT) + 1).padStart(3, '0')}.jpg`;
+const NAME = (i) => `photo${String((i % PHOTO_COUNT) + 1).padStart(3, '0')}`;
 
-// Due livelli di dettaglio. Il lato corto della miniatura e 240 px: oltre quella
-// dimensione a schermo l'immagine viene ingrandita e si sgrana, quindi si passa
-// alle HD (lato corto 675 px, che copre anche lo zoom massimo su retina).
-// Le HD pesano 28 MB in tutto e si scaricano SOLO se si supera la soglia:
-// all'apertura la pagina carica solo i 5.3 MB di miniature.
+// Tre livelli per la griglia, scelti sul lato della cella in pixel REALI.
+// Ognuno si scarica solo se si supera la sua soglia: all'apertura la pagina
+// carica i soli ritagli da 320 px.
+//
+// A zoom massimo una cella misura ~605 px reali e viene servita a 1536:
+// 2.54x di sovracampionamento, contro l'1.71x del sito di riferimento.
 const TIERS = [
   { dir: 'thumb', maxCellPx: 200 },
-  { dir: 'hd', maxCellPx: Infinity },
+  { dir: 'hd', maxCellPx: 600 },
+  { dir: 'xl', maxCellPx: Infinity },   // 1536 px nativi: nessuna riduzione
 ];
-const SRC = (i, dir) => `assets/photos/${dir}/${NAME(i)}`;
+
+// I livelli quadrati sono WebP, che a parita di peso ritiene molto piu
+// dettaglio del JPEG. `full` e il sorgente copiato senza ricodifica: resta JPEG.
+const SRC = (i, dir) => `assets/photos/${dir}/${NAME(i)}.${dir === 'full' ? 'jpg' : 'webp'}`;
 let tier = TIERS[0];
 
 // Riferimenti al visore
