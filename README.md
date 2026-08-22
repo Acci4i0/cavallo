@@ -9,8 +9,12 @@ Le celle mostrano 158 fotografie scattate in Puglia, in due livelli di dettaglio
 miniature a 320 px (`assets/photos/thumb`, 5.3 MB) alla scala di partenza, e
 versioni a 900 px (`assets/photos/hd`, 28 MB) quando si zooma. Le HD si scaricano
 **solo** oltre la soglia, quindi all'apertura la pagina carica 5.3 MB. Esiste un
-terzo livello a 1600 px (`assets/photos/full`, 75 MB) che serve unicamente al
-visore: si scarica una immagine alla volta, quella che si apre.
+terzo livello (`assets/photos/full`, 134 MB) che serve unicamente al visore: si
+scarica una immagine alla volta, quella che si apre.
+
+Il terzo livello è a **2048 px**, che è la risoluzione nativa delle sorgenti: non
+c'è margine per andare oltre senza interpolare. Una versione precedente le
+riduceva a 1600 px e a schermo intero si vedeva.
 
 La soglia è sul lato della cella in pixel reali del dispositivo: sopra 200 px la
 miniatura verrebbe ingrandita e si sgranerebbe. A zoom massimo una cella arriva a
@@ -49,25 +53,42 @@ esiste nulla che lo metta in pausa.
 Lo zoom parte dalla scala che fa entrare la sagoma esattamente nel viewport e
 sale fino a 12.5×, lo stesso rapporto fra i limiti misurati.
 
-**Il galoppo gira solo alla scala di partenza.** Appena si zooma si ferma: con le
-celle immobili si possono guardare le fotografie una a una, che è il motivo per
-cui si zooma. Tornando allo zoom iniziale riparte da solo.
+**Alla scala di partenza l'inquadratura è fissa.** Non si sposta e non si può
+ridurre oltre: il cavallo resta sempre nella stessa posizione, e il galoppo gira.
 
-| Gesto (a galoppo fermo) | Effetto |
+Appena si zooma il galoppo si ferma e la vista si sblocca: si trascina per
+muoversi e si può aprire una fotografia. Con le celle immobili il bersaglio è
+stabile, ed è la condizione che rende l'apertura possibile.
+
+| Gesto (solo sotto zoom) | Effetto |
 |---|---|
+| trascina | si naviga nella sagoma |
 | click o tap su una cella | la fotografia si apre a schermo intero |
+| frecce, `←` `→` | fotografia precedente / successiva |
 | click, tap o `Esc` | si chiude |
 
-L'apertura è possibile **solo a griglia ferma**, e non è una limitazione
-arbitraria. Con il galoppo in corso gli elementi cambiano posizione ogni 100 ms:
-fra il momento in cui si mira una fotografia e quello in cui si tocca, quella
-cella si è già spostata e sotto il dito ne è arrivata un'altra. La versione
-precedente leggeva il bersaglio al rilascio e apriva sistematicamente
-un'immagine diversa da quella scelta.
+Passando da una fotografia all'altra **lo sfondo la segue**: si cerca la cella
+che porta l'immagine di destinazione più vicina al centro dello schermo e ci si
+sposta sopra, così la sagoma dietro accompagna il cambio invece di restare ferma.
 
-Ora il bersaglio si cattura al `pointerdown`, si riconferma al `pointerup` che
-sotto il puntatore ci sia ancora la stessa cella, e la fotografia si legge dal
-`dataset` dell'elemento — mai dalla posizione.
+Nessuna didascalia: solo le frecce.
+
+Dopo **7 secondi** senza input sotto zoom si rientra da soli alla scala di
+partenza, con un tween di 1200 ms, e il galoppo riprende. Sono i tempi di idle e
+di rientro misurati sul sito di riferimento.
+
+### Perché l'apertura funziona solo a griglia ferma
+
+Non è una limitazione arbitraria. Con il galoppo in corso gli elementi cambiano
+posizione ogni 100 ms: fra il momento in cui si mira una fotografia e quello in
+cui si tocca, quella cella si è già spostata e sotto il dito ne è arrivata
+un'altra. Il tempo di reazione umano è di circa 250 ms, cioè due o tre
+fotogrammi di ritardo: sbagliare bersaglio era sistematico, non occasionale.
+
+Oltre a legare l'apertura alla griglia ferma, il bersaglio si cattura al
+`pointerdown`, si riconferma al `pointerup` che sotto il puntatore ci sia ancora
+la stessa cella, e la fotografia si legge dal `dataset` dell'elemento — mai dalla
+posizione.
 
 ## Sviluppo
 

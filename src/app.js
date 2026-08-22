@@ -16,6 +16,8 @@ const SPEC = {
   DRAG_THRESHOLD: 3,    // §2 — px oltre i quali è trascinamento
   ZOOM_EPS: 1.01,       // tolleranza per considerarsi "alla scala di partenza"
   OPEN_MS: 1200,        // apertura/chiusura del visore (3Dgallery, FOCUS)
+  IDLE_MS: 7000,        // §G4 — inattivita prima del rientro automatico
+  RETURN_MS: 1200,      // §G4 — durata del rientro, easeInOutCubic
 };
 
 // Fotografie della cartella Puglia. L'elemento DOM cells[n] riceve sempre
@@ -41,7 +43,13 @@ let tier = TIERS[0];
 // Riferimenti al visore
 const viewer = document.getElementById('viewer');
 const viewerImg = document.getElementById('viewerImg');
-let opened = null;   // cella attualmente aperta, o null
+let opened = null;    // cella attualmente aperta, o null
+let openedPhoto = 0;  // indice della fotografia mostrata (0..PHOTO_COUNT-1)
+let idleTimer = null;
+let returnRaf = null;
+
+const easeInOutCubic = (t) =>          // §0 — easing del sito di riferimento
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
 /** Lato della cella in pixel REALI del dispositivo, non CSS. */
 function cellDevicePx() {
@@ -176,6 +184,7 @@ function updateMotion() {
   if (scale > fitScale * SPEC.ZOOM_EPS) stopGallop();
   else startGallop();
   stage.classList.toggle('still', !gallop);
+  nudge();
 }
 
 /* ── Visore ───────────────────────────────────────────────────────────────── */
@@ -193,6 +202,7 @@ function openPhoto(cell) {
   const idx = Number(cell.dataset.i);
   if (!Number.isFinite(idx)) return;
   opened = cell;
+  openedPhoto = idx % PHOTO_COUNT;
 
   const from = cell.getBoundingClientRect();
   const img = new Image();
@@ -234,6 +244,87 @@ function closePhoto() {
   }, SPEC.OPEN_MS);
 }
 
+/**
+ * Passa alla fotografia precedente/successiva.
+ *
+ * Lo sfondo segue: si cerca la cella che porta la fotografia di destinazione
+ * piu vicina al centro dello schermo e ci si sposta sopra, cosi la sagoma dietro
+ * accompagna il cambio invece di restare ferma.
+ */
+function navigate(delta) {
+  if (!opened) return;
+  const target = (openedPhoto + delta + PHOTO_COUNT) % PHOTO_COUNT;
+
+  // cella piu vicina al centro fra quelle che mostrano la fotografia scelta
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  let best = null, bestD = Infinity;
+  for (const el of grid.querySelectorAll('.cell:not([hidden])')) {
+    if (Number(el.dataset.i) % PHOTO_COUNT !== target) continue;
+    const r = el.getBoundingClientRect();
+    const d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy);
+    if (d < bestD) { bestD = d; best = el; }
+  }
+  if (!best) return;
+
+  // porta quella cella al centro: e questo il movimento dello sfondo
+  const r = best.getBoundingClientRect();
+  tx += cx - (r.left + r.width / 2);
+  ty += cy - (r.top + r.height / 2);
+  applyView();
+
+  opened = best;
+  openedPhoto = target;
+
+  // scambio dell'immagine: dissolvenza breve, senza rifare il volo
+  const img = new Image();
+  img.onload = () => {
+    if (openedPhoto !== target) return;
+    const to = containRect(img.naturalWidth, img.naturalHeight);
+    viewerImg.classList.add('swap');
+    setTimeout(() => {
+      viewerImg.src = img.src;
+      viewerImg.style.left = `${to.x}px`;
+      viewerImg.style.top = `${to.y}px`;
+      viewerImg.style.width = `${to.w}px`;
+      viewerImg.style.height = `${to.h}px`;
+      viewerImg.style.transform = 'translate(0, 0) scale(1, 1)';
+      viewerImg.classList.remove('swap');
+    }, 180);
+  };
+  img.src = SRC(target, 'full');
+}
+
+/* ── Rientro automatico ───────────────────────────────────────────────────── */
+
+/** Torna alla scala di partenza con un tween, poi il galoppo riprende. */
+function returnToFit() {
+  if (returnRaf) cancelAnimationFrame(returnRaf);
+  closePhoto();
+  const s0 = scale, x0 = tx, y0 = ty;
+  const gw = (bbox[2] - bbox[0] + 1) * MASK.grid.cellSize;
+  const gh = (bbox[3] - bbox[1] + 1) * MASK.grid.cellSize;
+  const x1 = (stage.clientWidth - gw * fitScale) / 2 - bbox[0] * MASK.grid.cellSize * fitScale;
+  const y1 = (stage.clientHeight - gh * fitScale) / 2 - bbox[1] * MASK.grid.cellSize * fitScale;
+  const t0 = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / SPEC.RETURN_MS);
+    const e = easeInOutCubic(t);
+    scale = s0 + (fitScale - s0) * e;
+    tx = x0 + (x1 - x0) * e;
+    ty = y0 + (y1 - y0) * e;
+    applyView();
+    if (t < 1) returnRaf = requestAnimationFrame(step);
+    else { returnRaf = null; applyTier(); updateMotion(); }
+  };
+  returnRaf = requestAnimationFrame(step);
+}
+
+/** Ogni interazione rimanda il rientro. Il timer vive solo sotto zoom. */
+function nudge() {
+  clearTimeout(idleTimer);
+  if (scale > fitScale * SPEC.ZOOM_EPS) idleTimer = setTimeout(returnToFit, SPEC.IDLE_MS);
+}
+
 /* ── Input: solo vista ────────────────────────────────────────────────────── */
 
 let down = null;
@@ -243,6 +334,7 @@ function bindInput() {
   stage.addEventListener('wheel', (e) => {
     e.preventDefault();
     zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+    nudge();
   }, { passive: false });
 
   stage.addEventListener('pointerdown', (e) => {
@@ -256,13 +348,18 @@ function bindInput() {
     }
     stage.setPointerCapture(e.pointerId);
     stage.classList.add('dragging');
+    nudge();
   });
 
   stage.addEventListener('pointermove', (e) => {
     if (!down) return;
     const dx = e.clientX - down.x, dy = e.clientY - down.y;
     if (!down.moved && Math.hypot(dx, dy) > SPEC.DRAG_THRESHOLD) down.moved = true;
-    if (down.moved) { tx = down.tx + dx; ty = down.ty + dy; applyView(); }
+    // Alla scala di partenza l'inquadratura e FISSA: niente spostamenti.
+    // Ci si muove solo dopo aver zoomato.
+    if (down.moved && scale > fitScale * SPEC.ZOOM_EPS) {
+      tx = down.tx + dx; ty = down.ty + dy; applyView();
+    }
   });
 
   stage.addEventListener('pointerup', (e) => {
@@ -273,14 +370,28 @@ function bindInput() {
     // Riconferma: sotto il puntatore ci deve essere ANCORA la stessa cella.
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (el === d.cell) openPhoto(d.cell);
+    nudge();
   });
 
   stage.addEventListener('pointercancel', () => {
     stage.classList.remove('dragging'); down = null;
   });
 
-  viewer.addEventListener('click', closePhoto);
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
+  // Il click sullo sfondo del visore chiude; sulle frecce no.
+  viewer.addEventListener('click', (e) => {
+    nudge();
+    if (e.target.closest('button')) return;
+    closePhoto();
+  });
+  document.getElementById('prev').addEventListener('click', () => { navigate(-1); nudge(); });
+  document.getElementById('next').addEventListener('click', () => { navigate(1); nudge(); });
+
+  window.addEventListener('keydown', (e) => {
+    nudge();
+    if (e.key === 'Escape') closePhoto();
+    else if (opened && e.key === 'ArrowLeft') navigate(-1);
+    else if (opened && e.key === 'ArrowRight') navigate(1);
+  });
 
   stage.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
@@ -299,6 +410,7 @@ function bindInput() {
     const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
     const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     zoomAt(mx, my, (pinchScale * (d / pinchD)) / scale);
+    nudge();
   }, { passive: false });
 
   stage.addEventListener('touchend', () => { pinchD = 0; });
@@ -334,6 +446,8 @@ function bindInput() {
     get tier() { return tier.dir; },
     get galloping() { return !!gallop; },
     get opened() { return opened ? Number(opened.dataset.i) : null; },
+    get openedPhoto() { return opened ? openedPhoto : null; },
+    navigate, returnToFit,
     get viewerSrc() { return (viewerImg.getAttribute('src') || '').split('/').pop(); },
     openPhoto, closePhoto,
     get zoomFactor() { return scale / fitScale; },
