@@ -14,6 +14,7 @@ const SPEC = {
   ZOOM_MAX: 5,          // §2 — limite superiore
   FRAME_MS: 100,        // §2 — un fotogramma del galoppo
   DRAG_THRESHOLD: 3,    // §2 — px oltre i quali è trascinamento
+  ZOOM_EPS: 1.01,       // tolleranza per considerarsi "alla scala di partenza"
 };
 
 // Fotografie della cartella Puglia. L'elemento DOM cells[n] riceve sempre
@@ -22,7 +23,36 @@ const SPEC = {
 // vede nasce dal fatto che a ogni fotogramma lo stesso elemento finisce in una
 // posizione diversa della griglia.
 const PHOTO_COUNT = 158;
-const THUMB = (i) => `assets/photos/thumb/photo${String((i % PHOTO_COUNT) + 1).padStart(3, '0')}.jpg`;
+const NAME = (i) => `photo${String((i % PHOTO_COUNT) + 1).padStart(3, '0')}.jpg`;
+
+// Due livelli di dettaglio. Il lato corto della miniatura e 240 px: oltre quella
+// dimensione a schermo l'immagine viene ingrandita e si sgrana, quindi si passa
+// alle HD (lato corto 675 px, che copre anche lo zoom massimo su retina).
+// Le HD pesano 28 MB in tutto e si scaricano SOLO se si supera la soglia:
+// all'apertura la pagina carica solo i 5.3 MB di miniature.
+const TIERS = [
+  { dir: 'thumb', maxCellPx: 200 },
+  { dir: 'hd', maxCellPx: Infinity },
+];
+const SRC = (i, dir) => `assets/photos/${dir}/${NAME(i)}`;
+let tier = TIERS[0];
+
+/** Lato della cella in pixel REALI del dispositivo, non CSS. */
+function cellDevicePx() {
+  const { cellSize, spacing } = MASK.grid;
+  return (cellSize - spacing) * scale * (window.devicePixelRatio || 1);
+}
+
+/** Se il livello cambia, riscrive lo sfondo di tutto il pool. */
+function applyTier() {
+  const px = cellDevicePx();
+  const next = TIERS.find((t) => px <= t.maxCellPx) || TIERS[TIERS.length - 1];
+  if (next === tier) return;
+  tier = next;
+  for (let i = 0; i < cells.length; i++) {
+    cells[i].style.backgroundImage = `url("${SRC(i, tier.dir)}")`;
+  }
+}
 
 const stage = document.getElementById('stage');
 const grid = document.getElementById('grid');
@@ -30,6 +60,7 @@ const grid = document.getElementById('grid');
 let MASK = null;
 let cells = [];
 let frame = 0;
+let gallop = null;                     // handle dell'intervallo del galoppo
 let bbox = null;                       // [c0, r0, c1, r1] unione di tutti i frame
 let scale = 1, tx = 0, ty = 0, fitScale = 1;
 
@@ -61,6 +92,8 @@ function zoomAt(px, py, factor) {
   ty = py - (py - ty) * k;
   scale = next;
   applyView();
+  applyTier();
+  updateMotion();
 }
 
 /* ── Griglia, generata dalla sola matrice ─────────────────────────────────── */
@@ -89,7 +122,7 @@ function buildPool() {
   for (let i = 0; i < max; i++) {
     const d = document.createElement('div');
     d.className = 'cell';
-    d.style.backgroundImage = `url("${THUMB(i)}")`;
+    d.style.backgroundImage = `url("${SRC(i, tier.dir)}")`;
     d.hidden = true;
     frag.appendChild(d);
     cells.push(d);
@@ -119,7 +152,22 @@ function draw(f) {
 /* ── Galoppo: sempre in corso, non lo interrompe nulla ────────────────────── */
 
 function startGallop() {
-  setInterval(() => draw((frame + 1) % MASK.frames.length), SPEC.FRAME_MS);
+  if (gallop) return;
+  gallop = setInterval(() => draw((frame + 1) % MASK.frames.length), SPEC.FRAME_MS);
+}
+
+function stopGallop() {
+  if (gallop) { clearInterval(gallop); gallop = null; }
+}
+
+/**
+ * Il galoppo gira solo alla scala di partenza. Appena si zooma si ferma: con
+ * le celle immobili si puo navigare e guardare le fotografie una a una, che e
+ * il motivo per cui si zooma. Tornando allo zoom iniziale riparte.
+ */
+function updateMotion() {
+  if (scale > fitScale * SPEC.ZOOM_EPS) stopGallop();
+  else startGallop();
 }
 
 /* ── Input: solo vista ────────────────────────────────────────────────────── */
@@ -177,6 +225,8 @@ function bindInput() {
     fitToScreen();
     scale = fitScale * z;
     applyView();
+    applyTier();
+    updateMotion();
   });
 }
 
@@ -187,6 +237,7 @@ function bindInput() {
   bbox = computeBbox();
   buildPool();
   fitToScreen();
+  applyTier();
   draw(0);
   bindInput();
   startGallop();
@@ -196,5 +247,9 @@ function bindInput() {
     get scale() { return scale; },
     visibleCells: () => grid.querySelectorAll('.cell:not([hidden])').length,
     mask: () => MASK, bbox: () => bbox,
+    get tier() { return tier.dir; },
+    get galloping() { return !!gallop; },
+    get zoomFactor() { return scale / fitScale; },
+    get cellDevicePx() { return cellDevicePx(); },
   };
 })();

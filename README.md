@@ -5,10 +5,14 @@ una maschera di occupazione su una griglia **54 × 42**, e le celle accese
 ospitano l'immagine. Nessuna interfaccia — solo la sagoma, a tutto schermo su
 desktop e iPhone. Il galoppo non si ferma mai.
 
-Le celle mostrano 158 fotografie scattate in Puglia. Nel repository ci sono solo
-le miniature a 320 px (`assets/photos/thumb`, 5.3 MB): sono l'unica cosa che la
-griglia usa, dato che a schermo una cella è piccola. Gli originali a piena
-risoluzione restano fuori.
+Le celle mostrano 158 fotografie scattate in Puglia, in due livelli di dettaglio:
+miniature a 320 px (`assets/photos/thumb`, 5.3 MB) alla scala di partenza, e
+versioni a 900 px (`assets/photos/hd`, 28 MB) quando si zooma. Le HD si scaricano
+**solo** oltre la soglia, quindi all'apertura la pagina carica 5.3 MB.
+
+La soglia è sul lato della cella in pixel reali del dispositivo: sopra 200 px la
+miniatura verrebbe ingrandita e si sgranerebbe. A zoom massimo una cella arriva a
+605 px su desktop retina, coperti dai 675 px di lato corto delle HD.
 
 L'assegnazione è fissa per elemento: l'ennesimo `div` del pool porta sempre la
 stessa fotografia. Il rimescolamento che si vede nasce dal fatto che a ogni
@@ -23,7 +27,7 @@ in `src/data/mask-frames.json`. Nel markup non esiste una sola coordinata.
 |---|---|
 | Griglia | 54 × 42 celle, `cellSize` 12, gap 2 su entrambi gli assi, nessuno stagger |
 | Animazione | 58 fotogrammi, 19 matrici uniche, hard-cut senza interpolazione |
-| Ciclo | 100 ms per fotogramma, ininterrotto |
+| Ciclo | 100 ms per fotogramma, fermo quando si zooma |
 | Celle accese | da 477 a 555 secondo il fotogramma |
 
 Le celle sono `div` posizionati con `transform: translate()` — mai `top`/`left`,
@@ -42,6 +46,10 @@ esiste nulla che lo metta in pausa.
 
 Lo zoom parte dalla scala che fa entrare la sagoma esattamente nel viewport e
 sale fino a 12.5×, lo stesso rapporto fra i limiti misurati.
+
+**Il galoppo gira solo alla scala di partenza.** Appena si zooma si ferma: con le
+celle immobili si possono guardare le fotografie una a una, che è il motivo per
+cui si zooma. Tornando allo zoom iniziale riparte da solo.
 
 ## Sviluppo
 
@@ -64,9 +72,9 @@ macOS). I nomi devono essere contigui, da `photo001.jpg` in avanti:
 ```bash
 i=0
 find <cartella> -type f -iname '*.jpg' -print0 | sort -z | while IFS= read -r -d '' f; do
-  i=$((i+1))
-  sips -s format jpeg -s formatOptions 78 -Z 320 "$f" \
-       --out "assets/photos/thumb/$(printf 'photo%03d.jpg' $i)"
+  i=$((i+1)); n=$(printf 'photo%03d.jpg' $i)
+  sips -s format jpeg -s formatOptions 78 -Z 320 "$f" --out "assets/photos/thumb/$n"
+  sips -s format jpeg -s formatOptions 82 -Z 900 "$f" --out "assets/photos/hd/$n"
 done
 ```
 
@@ -96,7 +104,8 @@ index.html                  la pagina, senza interfaccia
 src/app.js                  maschera, galoppo, zoom, pan
 src/style.css               schermo intero, dvh, safe area
 src/data/mask-frames.json   matrici booleane — generato
-assets/photos/thumb/        158 miniature a 320 px
+assets/photos/thumb/        158 miniature a 320 px (scala di partenza)
+assets/photos/hd/           158 versioni a 900 px (sotto zoom)
 assets/gallop/              silhouette sorgente per build-mask.js
 scripts/                    generatori della maschera
 research/                   misure e spec del comportamento
