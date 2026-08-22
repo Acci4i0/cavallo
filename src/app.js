@@ -62,14 +62,27 @@ function cellDevicePx() {
   return (cellSize - spacing) * scale * (window.devicePixelRatio || 1);
 }
 
-/** Se il livello cambia, riscrive lo sfondo di tutto il pool. */
+/**
+ * Aggiorna il livello delle sole celle VISIBILI.
+ *
+ * Riscrivere tutto il pool in un colpo faceva partire 158 richieste insieme —
+ * 42 MB per il livello xl — e GitHub Pages rispondeva 503. Le celle fuori
+ * schermo restano al livello precedente e vengono aggiornate quando entrano,
+ * perche questa funzione viene richiamata anche dopo pan e zoom.
+ */
 function applyTier() {
   const px = cellDevicePx();
   const next = TIERS.find((t) => px <= t.maxCellPx) || TIERS[TIERS.length - 1];
-  if (next === tier) return;
   tier = next;
+  const M = 200;   // margine attorno al viewport, per anticipare il pan
+  const vw = window.innerWidth, vh = window.innerHeight;
   for (let i = 0; i < cells.length; i++) {
-    cells[i].style.backgroundImage = `url("${SRC(i, tier.dir)}")`;
+    const el = cells[i];
+    if (el.hidden || el.dataset.tier === next.dir) continue;
+    const r = el.getBoundingClientRect();
+    if (r.right < -M || r.left > vw + M || r.bottom < -M || r.top > vh + M) continue;
+    el.dataset.tier = next.dir;
+    el.style.backgroundImage = `url("${SRC(i, next.dir)}")`;
   }
 }
 
@@ -142,6 +155,7 @@ function buildPool() {
     const d = document.createElement('div');
     d.className = 'cell';
     d.style.backgroundImage = `url("${SRC(i, tier.dir)}")`;
+    d.dataset.tier = tier.dir;
     d.dataset.i = String(i);   // la foto della cella si legge da qui, mai dalla posizione
     d.hidden = true;
     frag.appendChild(d);
@@ -218,6 +232,15 @@ function openPhoto(cell) {
 
   const from = cell.getBoundingClientRect();
   const img = new Image();
+  // Senza onerror un solo caricamento fallito lasciava `opened` valorizzato e
+  // ogni click successivo veniva ignorato: il visore restava bloccato.
+  img.onerror = () => {
+    if (opened !== cell) return;
+    opened = null;
+    stage.classList.remove('viewing');
+    viewer.hidden = true;
+    viewer.classList.remove('on');
+  };
   img.onload = () => {
     if (opened !== cell) return;
     const to = containRect(img.naturalWidth, img.naturalHeight);
@@ -383,6 +406,9 @@ function bindInput() {
     // Riconferma: sotto il puntatore ci deve essere ANCORA la stessa cella.
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (el === d.cell) openPhoto(d.cell);
+    // Le celle entrate nello schermo durante il trascinamento vanno portate al
+    // livello corrente: durante il pan restano a quello precedente.
+    if (d.moved) applyTier();
     nudge();
   });
 
@@ -426,7 +452,7 @@ function bindInput() {
     nudge();
   }, { passive: false });
 
-  stage.addEventListener('touchend', () => { pinchD = 0; });
+  stage.addEventListener('touchend', () => { pinchD = 0; applyTier(); });
 
   // Al resize si ricalcola il fit conservando il livello di zoom relativo
   window.addEventListener('resize', () => {
