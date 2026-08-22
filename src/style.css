@@ -56,46 +56,6 @@ html, body {
   background-position: center;
   background-repeat: no-repeat;
   transform: translate(0, 0);
-  will-change: transform, opacity;
-  /* Dissolvenza delle celle non selezionate quando una foto è aperta.
-     Durata ed ease presi dalla 3Dgallery dell'utente (config.js FRAME_FADE). */
-  transition: opacity 1s cubic-bezier(0.43, 0.19, 0.02, 1);
+  will-change: transform;
 }
 .cell[hidden] { display: none; }
-
-/* Con una foto aperta tutte le altre svaniscono */
-#stage.focus .cell { opacity: 0; }
-#stage.focus .cell.picked { opacity: 0; }
-
-/* ── Apertura foto ────────────────────────────────────────────────────────── */
-
-#viewer {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  background: var(--bg);
-  opacity: 0;
-  /* BACKGROUND della 3Dgallery: 0.2 s linear */
-  transition: opacity 0.2s linear;
-}
-#viewer.on { opacity: 1; }
-#viewer[hidden] { display: none; }
-
-/* L'immagine parte dal rettangolo della cella cliccata e vola al centro:
-   FOCUS della 3Dgallery — 1.2 s, cubic-bezier(0.43, 0.19, 0.02, 1). */
-#viewerImg {
-  position: absolute;
-  transform-origin: 0 0;
-  object-fit: cover;
-  will-change: transform, width, height;
-  transition:
-    transform 1.2s cubic-bezier(0.43, 0.19, 0.02, 1),
-    width     1.2s cubic-bezier(0.43, 0.19, 0.02, 1),
-    height    1.2s cubic-bezier(0.43, 0.19, 0.02, 1),
-    left      1.2s cubic-bezier(0.43, 0.19, 0.02, 1),
-    top       1.2s cubic-bezier(0.43, 0.19, 0.02, 1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cell, #viewer, #viewerImg { transition-duration: 0.01ms !important; }
-}

@@ -3,11 +3,11 @@
 Un cavallo al galoppo composto da fotografie: ogni fotogramma dell'animazione è
 una maschera di occupazione su una griglia **54 × 42**, e le celle accese
 ospitano le immagini. Nessuna interfaccia — solo la sagoma, a tutto schermo su
-desktop e iPhone. Cliccando una cella la fotografia si apre al centro.
+desktop e iPhone. Il galoppo non si ferma mai.
 
 Le fotografie vengono da `assets/photos`, che è l'unica fonte di verità: sono le
-stesse di [3Dgallery](https://github.com/Acci4i0/3Dgallery). Le miniature in
-`assets/photos/thumb` alimentano la griglia, il full-res serve solo all'apertura.
+stesse di [3Dgallery](https://github.com/Acci4i0/3Dgallery). La griglia usa le
+miniature in `assets/photos/thumb`.
 
 ## Come funziona
 
@@ -18,7 +18,7 @@ in `src/data/mask-frames.json`. Nel markup non esiste una sola coordinata.
 |---|---|
 | Griglia | 54 × 42 celle, `cellSize` 12, gap 2 su entrambi gli assi, nessuno stagger |
 | Animazione | 58 fotogrammi, 19 matrici uniche, hard-cut senza interpolazione |
-| Ciclo | 100 ms per fotogramma |
+| Ciclo | 100 ms per fotogramma, ininterrotto |
 | Celle accese | da 477 a 555 secondo il fotogramma |
 
 Le celle sono `div` posizionati con `transform: translate()` — mai `top`/`left`,
@@ -26,24 +26,17 @@ così restano sul layer di composizione e lo zoom non forza un reflow.
 
 ## Interazione
 
-Non ci sono controlli visibili. Tutto passa dai gesti:
+Non ci sono controlli visibili, e le celle non sono cliccabili: l'unica cosa che
+si può fare è muovere la vista. Il galoppo continua durante ogni gesto — non
+esiste nulla che lo metta in pausa.
 
 | Gesto | Effetto |
 |---|---|
-| nessuno | il cavallo galoppa |
-| muovi il puntatore, scrolli, tocchi | il galoppo si ferma, le fotografie diventano mirabili |
-| 7 s di inattività | riparte |
 | rotella o pinch | zoom ancorato al puntatore |
 | trascina | pan |
-| click su una cella | la fotografia si apre al centro |
-| click o `Esc` | si chiude |
 
-Il galoppo si ferma appena interagisci per una ragione pratica: a 100 ms per
-fotogramma le immagini cambiano troppo in fretta per poterne mirare una.
-
-L'apertura riusa i tempi di 3Dgallery: volo di 1.2 s con
-`cubic-bezier(0.43, 0.19, 0.02, 1)`, dissolvenza delle altre celle in 1 s,
-sfondo in 0.2 s lineari.
+Lo zoom parte dalla scala che fa entrare la sagoma esattamente nel viewport e
+sale fino a 12.5×, lo stesso rapporto fra i limiti misurati.
 
 ## Sviluppo
 
@@ -76,7 +69,7 @@ la sagoma cambia senza toccare una riga del renderer.
 
 ```
 index.html                  la pagina, senza interfaccia
-src/app.js                  maschera, galoppo, zoom, apertura foto
+src/app.js                  maschera, galoppo, zoom, pan
 src/style.css               schermo intero, dvh, safe area
 src/data/mask-frames.json   matrici booleane — generato
 assets/photos/              le fotografie + miniature
