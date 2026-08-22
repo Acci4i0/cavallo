@@ -16,9 +16,13 @@ const SPEC = {
   DRAG_THRESHOLD: 3,    // §2 — px oltre i quali è trascinamento
 };
 
-// Una sola fotografia in tutte le celle: si imposta una volta sola in
-// buildPool() e non cambia mai, quindi draw() non tocca il background.
-const THUMB = 'assets/photos/thumb/photo.jpg';
+// Fotografie della cartella Puglia. L'elemento DOM cells[n] riceve sempre
+// l'ordinale n, quindi la foto per elemento e FISSA: si assegna una volta in
+// buildPool() e draw() non tocca mai il background. Il rimescolamento che si
+// vede nasce dal fatto che a ogni fotogramma lo stesso elemento finisce in una
+// posizione diversa della griglia.
+const PHOTO_COUNT = 158;
+const THUMB = (i) => `assets/photos/thumb/photo${String((i % PHOTO_COUNT) + 1).padStart(3, '0')}.jpg`;
 
 const stage = document.getElementById('stage');
 const grid = document.getElementById('grid');
@@ -85,7 +89,7 @@ function buildPool() {
   for (let i = 0; i < max; i++) {
     const d = document.createElement('div');
     d.className = 'cell';
-    d.style.backgroundImage = `url("${THUMB}")`;
+    d.style.backgroundImage = `url("${THUMB(i)}")`;
     d.hidden = true;
     frag.appendChild(d);
     cells.push(d);

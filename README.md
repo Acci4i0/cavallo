@@ -5,9 +5,14 @@ una maschera di occupazione su una griglia **54 × 42**, e le celle accese
 ospitano l'immagine. Nessuna interfaccia — solo la sagoma, a tutto schermo su
 desktop e iPhone. Il galoppo non si ferma mai.
 
-Tutte le celle mostrano la stessa fotografia. La sorgente è
-`assets/photos/source/IMG_5757.HEIC`; da lì derivano il JPEG e la miniatura che
-la griglia usa davvero.
+Le celle mostrano 158 fotografie scattate in Puglia. Nel repository ci sono solo
+le miniature a 320 px (`assets/photos/thumb`, 5.3 MB): sono l'unica cosa che la
+griglia usa, dato che a schermo una cella è piccola. Gli originali a piena
+risoluzione restano fuori.
+
+L'assegnazione è fissa per elemento: l'ennesimo `div` del pool porta sempre la
+stessa fotografia. Il rimescolamento che si vede nasce dal fatto che a ogni
+fotogramma quello stesso elemento finisce in una posizione diversa della sagoma.
 
 ## Come funziona
 
@@ -51,18 +56,24 @@ python3 -m http.server 4173
 Le dipendenze in `package.json` servono solo agli script di misura
 (Playwright, js-beautify) e non finiscono nella pagina.
 
-## Cambiare la fotografia
+## Cambiare le fotografie
 
-Basta sostituire la sorgente e riconvertirla (`sips` è già su macOS):
+Metti gli originali in una cartella e rigenera le miniature (`sips` è già su
+macOS). I nomi devono essere contigui, da `photo001.jpg` in avanti:
 
 ```bash
-sips -s format jpeg -s formatOptions 85 -Z 1600 <nuova> --out assets/photos/photo.jpg
-sips -s format jpeg -s formatOptions 80 -Z 320  <nuova> --out assets/photos/thumb/photo.jpg
+i=0
+find <cartella> -type f -iname '*.jpg' -print0 | sort -z | while IFS= read -r -d '' f; do
+  i=$((i+1))
+  sips -s format jpeg -s formatOptions 78 -Z 320 "$f" \
+       --out "assets/photos/thumb/$(printf 'photo%03d.jpg' $i)"
+done
 ```
 
-La griglia usa solo la miniatura: le celle sono piccole e l'immagine viene
-ritagliata al centro con `background-size: cover`. Il JPEG grande resta come
-copia leggibile dai browser, che l'HEIC non supportano tutti.
+Poi allinea `PHOTO_COUNT` in `src/app.js` al numero di file prodotti.
+
+Attenzione ai nomi con spazi: senza `-print0` e `read -d ''` il ciclo li spezza
+e la numerazione si sfasa.
 
 ## Rigenerare la maschera
 
@@ -85,7 +96,7 @@ index.html                  la pagina, senza interfaccia
 src/app.js                  maschera, galoppo, zoom, pan
 src/style.css               schermo intero, dvh, safe area
 src/data/mask-frames.json   matrici booleane — generato
-assets/photos/              la fotografia, la miniatura e l'originale HEIC
+assets/photos/thumb/        158 miniature a 320 px
 assets/gallop/              silhouette sorgente per build-mask.js
 scripts/                    generatori della maschera
 research/                   misure e spec del comportamento

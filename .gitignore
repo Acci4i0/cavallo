@@ -13,3 +13,6 @@ node_modules/
 _reference/
 research/bundles/
 research/raw/
+
+# sorgenti fotografiche non ridimensionate: nel repo vanno solo le miniature
+puglia/
