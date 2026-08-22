@@ -2,12 +2,12 @@
 
 Un cavallo al galoppo composto da fotografie: ogni fotogramma dell'animazione è
 una maschera di occupazione su una griglia **54 × 42**, e le celle accese
-ospitano le immagini. Nessuna interfaccia — solo la sagoma, a tutto schermo su
+ospitano l'immagine. Nessuna interfaccia — solo la sagoma, a tutto schermo su
 desktop e iPhone. Il galoppo non si ferma mai.
 
-Le fotografie vengono da `assets/photos`, che è l'unica fonte di verità: sono le
-stesse di [3Dgallery](https://github.com/Acci4i0/3Dgallery). La griglia usa le
-miniature in `assets/photos/thumb`.
+Tutte le celle mostrano la stessa fotografia. La sorgente è
+`assets/photos/source/IMG_5757.HEIC`; da lì derivano il JPEG e la miniatura che
+la griglia usa davvero.
 
 ## Come funziona
 
@@ -51,6 +51,19 @@ python3 -m http.server 4173
 Le dipendenze in `package.json` servono solo agli script di misura
 (Playwright, js-beautify) e non finiscono nella pagina.
 
+## Cambiare la fotografia
+
+Basta sostituire la sorgente e riconvertirla (`sips` è già su macOS):
+
+```bash
+sips -s format jpeg -s formatOptions 85 -Z 1600 <nuova> --out assets/photos/photo.jpg
+sips -s format jpeg -s formatOptions 80 -Z 320  <nuova> --out assets/photos/thumb/photo.jpg
+```
+
+La griglia usa solo la miniatura: le celle sono piccole e l'immagine viene
+ritagliata al centro con `background-size: cover`. Il JPEG grande resta come
+copia leggibile dai browser, che l'HEIC non supportano tutti.
+
 ## Rigenerare la maschera
 
 `src/data/mask-frames.json` è un artefatto generato, non si modifica a mano.
@@ -72,7 +85,7 @@ index.html                  la pagina, senza interfaccia
 src/app.js                  maschera, galoppo, zoom, pan
 src/style.css               schermo intero, dvh, safe area
 src/data/mask-frames.json   matrici booleane — generato
-assets/photos/              le fotografie + miniature
+assets/photos/              la fotografia, la miniatura e l'originale HEIC
 assets/gallop/              silhouette sorgente per build-mask.js
 scripts/                    generatori della maschera
 research/                   misure e spec del comportamento

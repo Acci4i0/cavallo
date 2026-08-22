@@ -16,8 +16,9 @@ const SPEC = {
   DRAG_THRESHOLD: 3,    // §2 — px oltre i quali è trascinamento
 };
 
-const PHOTOS = Array.from({ length: 20 }, (_, i) => `photo${String(i + 1).padStart(2, '0')}.jpg`);
-const THUMB = (n) => `assets/photos/thumb/${n}`;
+// Una sola fotografia in tutte le celle: si imposta una volta sola in
+// buildPool() e non cambia mai, quindi draw() non tocca il background.
+const THUMB = 'assets/photos/thumb/photo.jpg';
 
 const stage = document.getElementById('stage');
 const grid = document.getElementById('grid');
@@ -84,6 +85,7 @@ function buildPool() {
   for (let i = 0; i < max; i++) {
     const d = document.createElement('div');
     d.className = 'cell';
+    d.style.backgroundImage = `url("${THUMB}")`;
     d.hidden = true;
     frag.appendChild(d);
     cells.push(d);
@@ -91,7 +93,7 @@ function buildPool() {
   grid.appendChild(frag);
 }
 
-/** Disegna un fotogramma. L'ordinale row-major determina la foto. */
+/** Disegna un fotogramma: sposta le celle accese, nasconde le altre. */
 function draw(f) {
   const { cols, rows, cellSize, spacing } = MASK.grid;
   const m = MASK.frames[f];
@@ -102,11 +104,6 @@ function draw(f) {
       if (!m[r * cols + c]) continue;
       const el = cells[n];
       el.style.transform = `translate(${c * cellSize + half}px, ${r * cellSize + half}px)`;
-      const photo = PHOTOS[n % PHOTOS.length];
-      if (el.dataset.photo !== photo) {
-        el.dataset.photo = photo;
-        el.style.backgroundImage = `url("${THUMB(photo)}")`;
-      }
       if (el.hidden) el.hidden = false;
       n++;
     }
