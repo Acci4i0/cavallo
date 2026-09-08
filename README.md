@@ -1,195 +1,197 @@
-# cavallo — griglia mascherata a schermo intero
+# cavallo — a galloping horse made of photographs
 
-Un cavallo al galoppo composto da fotografie: ogni fotogramma dell'animazione è
-una maschera di occupazione su una griglia **54 × 42**, e le celle accese
-ospitano l'immagine. Nessuna interfaccia — solo la sagoma, a tutto schermo su
-desktop e iPhone. Il galoppo non si ferma mai.
+A horse at full gallop, drawn out of photographs: every frame of the animation
+is an occupancy mask over a **54 × 42** grid, and the lit cells hold the images.
+No interface — just the silhouette, fullscreen on desktop and on iPhone. The
+gallop never stops.
 
-Le celle mostrano 158 fotografie scattate in Puglia, in **WebP**, su tre livelli
-di dettaglio scelti in base al lato della cella in pixel reali:
+**Live:** https://acci4i0.github.io/cavallo/
 
-| Livello | Contenuto | Quando | Peso |
+The cells show 158 photographs taken in Puglia, in **WebP**, across three
+levels of detail chosen by the cell's real pixel size:
+
+| Level | Contents | When | Weight |
 |---|---|---|---|
-| `thumb` | quadrato 320 px | fino a 200 px di cella | 2.4 MB |
-| `hd` | quadrato 1024 px | fino a 600 px | 18.5 MB |
-| `xl` | quadrato 1536 px, **nativo** | oltre 600 px | 42.6 MB |
-| `full` | fotogramma intero | visore, una alla volta | 129.5 MB |
+| `thumb` | 320 px square | up to a 200 px cell | 2.4 MB |
+| `hd` | 1024 px square | up to 600 px | 18.5 MB |
+| `xl` | 1536 px square, **native** | beyond 600 px | 42.6 MB |
+| `full` | whole frame | viewer, one at a time | 129.5 MB |
 
-Ogni livello si scarica solo se si supera la sua soglia: all'apertura la pagina
-carica i soli 2.4 MB di `thumb`.
+Each level downloads only once its threshold is crossed: on load the page pulls
+the 2.4 MB of `thumb` and nothing else.
 
-I livelli della griglia sono **quadrati** perché le celle lo sono e usano
-`background-size: cover`: di un'immagine 4:3 il lato lungo verrebbe scartato
-comunque, quindi ritagliando a monte ogni pixel scaricato finisce a schermo.
-Nessun livello ingrandisce mai la sorgente.
+The grid levels are **square** because the cells are, and they use
+`background-size: cover`: on a 4:3 image the long side would be thrown away
+anyway, so cropping upstream means every downloaded pixel reaches the screen.
+No level ever upscales its source.
 
-### Nitidezza
+### Sharpness
 
-A zoom massimo una cella misura 605 px reali e viene servita a 1536:
-**2.54× di sovracampionamento**, contro l'1.71× del sito di riferimento.
+At maximum zoom a cell measures 605 real pixels and is served at 1536:
+**2.54× oversampling**, against the reference site's 1.71×.
 
-La ricodifica è fatta da **Chrome**, non da `sips`. Misurando quanto dettaglio
-sopravvive rispetto a un ideale non compresso:
+Re-encoding is done by **Chrome**, not `sips`. Measuring how much detail
+survives against an uncompressed ideal:
 
-| Pipeline | Ritenzione |
+| Pipeline | Retention |
 |---|---|
-| sito di riferimento, AVIF q75 | 72.6% |
-| `sips` q82 (usato prima) | 77.2% |
-| **Chrome + WebP (attuale)** | **94.8% `hd`, 97.5% `xl`** |
+| reference site, AVIF q75 | 72.6% |
+| `sips` q82 (used before) | 77.2% |
+| **Chrome + WebP (current)** | **94.8% `hd`, 97.5% `xl`** |
 
-`sips` usa un filtro di ricampionamento scadente: su immagini ricche di dettaglio
-scendeva al 62%. Il livello `xl` è a pixel nativi, quindi non viene ridimensionato
-affatto.
+`sips` uses a poor resampling filter: on detail-rich images it dropped to 62%.
+The `xl` level is at native pixels, so it isn't resized at all.
 
-Il tetto residuo è nel materiale: le sorgenti sono 2048×1536 già ricompresse,
-mentre il sito di riferimento parte da originali fino a 69 MP. Con gli originali
-a piena risoluzione i ritagli nascerebbero da 3024 px invece che da 1536.
+What's left on the table is the material: the sources are 2048×1536 and already
+recompressed, while the reference site starts from originals up to 69 MP. With
+full-resolution originals the crops would come from 3024 px instead of 1536.
 
-## Come funziona
+## How it works
 
-La griglia non è disegnata a mano: viene generata **interamente** dalla matrice
-in `src/data/mask-frames.json`. Nel markup non esiste una sola coordinata.
+The grid isn't hand-drawn: it is generated **entirely** from the matrix in
+`src/data/mask-frames.json`. There is not one coordinate in the markup.
 
 | | |
 |---|---|
-| Griglia | 54 × 42 celle, `cellSize` 12, gap 2 su entrambi gli assi, nessuno stagger |
-| Animazione | 58 fotogrammi, 19 matrici uniche, hard-cut senza interpolazione |
-| Ciclo | 100 ms per fotogramma, fermo quando si zooma |
-| Celle accese | da 477 a 555 secondo il fotogramma |
+| Grid | 54 × 42 cells, `cellSize` 12, gap 2 on both axes, no stagger |
+| Animation | 58 frames, 19 unique matrices, hard cuts with no interpolation |
+| Cycle | 100 ms per frame, frozen while zoomed |
+| Lit cells | 477 to 555, depending on the frame |
 
-Le celle sono `div` posizionati con `transform: translate()` — mai `top`/`left`,
-così restano sul layer di composizione e lo zoom non forza un reflow.
+Cells are `div`s positioned with `transform: translate()` — never `top`/`left`
+— so they stay on the compositing layer and zooming doesn't force a reflow.
 
-## Interazione
+## Interaction
 
-Non ci sono controlli visibili, e le celle non sono cliccabili: l'unica cosa che
-si può fare è muovere la vista. Il galoppo continua durante ogni gesto — non
-esiste nulla che lo metta in pausa.
+There are no visible controls, and the cells aren't clickable: the only thing
+you can do is move the view. The gallop continues through every gesture —
+nothing pauses it.
 
-| Gesto | Effetto |
+| Gesture | Effect |
 |---|---|
-| rotella o pinch | zoom ancorato al puntatore |
-| trascina | pan |
+| wheel or pinch | zoom anchored to the pointer |
+| drag | pan |
 
-Lo zoom parte dalla scala che fa entrare la sagoma esattamente nel viewport e
-sale fino a 12.5×, lo stesso rapporto fra i limiti misurati.
+Zoom starts at the scale that fits the silhouette exactly into the viewport and
+goes up to 12.5×, the same ratio as the measured limits.
 
-**Alla scala di partenza l'inquadratura è fissa.** Non si sposta e non si può
-ridurre oltre: il cavallo resta sempre nella stessa posizione, e il galoppo gira.
+**At the starting scale the framing is fixed.** It doesn't move and can't be
+pulled back further: the horse stays put, and the gallop runs.
 
-Appena si zooma il galoppo si ferma e la vista si sblocca: si trascina per
-muoversi e si può aprire una fotografia. Con le celle immobili il bersaglio è
-stabile, ed è la condizione che rende l'apertura possibile.
+The moment you zoom, the gallop stops and the view unlocks: you drag to move
+around and you can open a photograph. With the cells still, the target is
+stable — and that is the condition that makes opening one possible at all.
 
-| Gesto (solo sotto zoom) | Effetto |
+| Gesture (only while zoomed) | Effect |
 |---|---|
-| trascina | si naviga nella sagoma |
-| click o tap su una cella | la fotografia si apre a schermo intero |
-| frecce, `←` `→` | fotografia precedente / successiva |
-| click, tap o `Esc` | si chiude |
+| drag | move through the silhouette |
+| click or tap a cell | the photograph opens fullscreen |
+| `←` `→` | previous / next photograph |
+| click, tap or `Esc` | close |
 
-Con una fotografia aperta la griglia **resta visibile** dietro, desaturata, sotto
-un velo chiaro — come sul riferimento, dove il canvas prende `grayscale(1)` sulle
-rotte di dettaglio. Passando da una fotografia all'altra **lo sfondo la segue**:
-si cerca la cella che porta l'immagine di destinazione più vicina al centro dello
-schermo e ci si sposta sopra, così la sagoma accompagna il cambio.
+With a photograph open the grid **stays visible** behind it, desaturated under a
+pale veil — as on the reference, where the canvas takes `grayscale(1)` on
+detail routes. Moving from one photograph to the next, **the background
+follows**: it looks for the cell carrying the destination image closest to the
+centre of the screen and travels there, so the silhouette accompanies the
+change.
 
-La fotografia non tocca mai i bordi: il margine lascia lo spazio alle frecce, che
-altrimenti finiscono sopra l'immagine e su scatti scuri diventano invisibili.
+The photograph never touches the edges: the margin leaves room for the arrows,
+which would otherwise sit on top of the image and disappear against dark shots.
 
-Nessuna didascalia: solo le frecce.
+No captions. Just the arrows.
 
-Dopo **7 secondi** senza input sotto zoom si rientra da soli alla scala di
-partenza, con un tween di 1200 ms, e il galoppo riprende. Sono i tempi di idle e
-di rientro misurati sul sito di riferimento.
+After **7 seconds** without input while zoomed, the view returns to the starting
+scale on its own with a 1200 ms tween, and the gallop resumes. Those are the
+idle and return timings measured on the reference site.
 
-### Perché l'apertura funziona solo a griglia ferma
+### Why opening only works when the grid is still
 
-Non è una limitazione arbitraria. Con il galoppo in corso gli elementi cambiano
-posizione ogni 100 ms: fra il momento in cui si mira una fotografia e quello in
-cui si tocca, quella cella si è già spostata e sotto il dito ne è arrivata
-un'altra. Il tempo di reazione umano è di circa 250 ms, cioè due o tre
-fotogrammi di ritardo: sbagliare bersaglio era sistematico, non occasionale.
+This isn't an arbitrary restriction. With the gallop running, elements change
+position every 100 ms: between aiming at a photograph and touching it, that cell
+has already moved and another has arrived under your finger. Human reaction time
+is around 250 ms — two or three frames of lag — so hitting the wrong target was
+systematic, not occasional.
 
-Oltre a legare l'apertura alla griglia ferma, il bersaglio si cattura al
-`pointerdown`, si riconferma al `pointerup` che sotto il puntatore ci sia ancora
-la stessa cella, e la fotografia si legge dal `dataset` dell'elemento — mai dalla
-posizione.
+Beyond tying the interaction to a still grid, the target is captured on
+`pointerdown`, reconfirmed on `pointerup` that the same cell is still under the
+pointer, and the photograph is read from the element's `dataset` — never from
+its position.
 
-## Sviluppo
+## Running it
 
-Nessuna dipendenza a runtime, nessun build step. Serve solo un server statico,
-perché la maschera viene caricata via `fetch`:
+No runtime dependencies and no build step. All you need is a static server,
+because the mask is loaded over `fetch`:
 
 ```bash
 python3 -m http.server 4173
-# poi apri http://localhost:4173/
+# then open http://localhost:4173/
 ```
 
-Le dipendenze in `package.json` servono solo agli script di misura
-(Playwright, js-beautify) e non finiscono nella pagina.
+The dependencies in `package.json` exist only for the measurement scripts
+(Playwright, js-beautify) and never reach the page.
 
-## Cambiare le fotografie
+## Changing the photographs
 
-Metti gli originali in una cartella e rigenera le miniature (`sips` è già su
-macOS). I nomi devono essere contigui, da `photo001.jpg` in avanti:
+Put the originals in a folder and regenerate the crops (`sips` ships with
+macOS). Names must be contiguous, from `photo001.jpg` upward:
 
 ```bash
-node scripts/build-photos.js <cartella>
+node scripts/build-photos.js <folder>
 ```
 
-Genera tutti e quattro i livelli, deduplica per hash, numera in modo contiguo e
-stampa il valore di `PHOTO_COUNT` da riportare in `src/app.js`. Per `full` copia
-il sorgente senza ricodificarlo quando è già entro 2048 px: ricomprimerlo
-sarebbe una seconda perdita senza alcun guadagno.
+It generates all four levels, deduplicates by hash, numbers contiguously and
+prints the `PHOTO_COUNT` value to carry into `src/app.js`. For `full` it copies
+the source without re-encoding when it is already within 2048 px: recompressing
+would be a second loss for no gain.
 
-Poi allinea `PHOTO_COUNT` in `src/app.js` al numero di file prodotti.
+Then align `PHOTO_COUNT` in `src/app.js` to the number of files produced.
 
-Attenzione ai nomi con spazi: senza `-print0` e `read -d ''` il ciclo li spezza
-e la numerazione si sfasa.
+Watch out for names with spaces: without `-print0` and `read -d ''` the loop
+breaks them apart and the numbering slips.
 
-## Rigenerare la maschera
+## Regenerating the mask
 
-`src/data/mask-frames.json` è un artefatto generato, non si modifica a mano.
+`src/data/mask-frames.json` is a generated artefact — don't edit it by hand.
 
 ```bash
-node scripts/build-mask.js          # dalle silhouette in assets/gallop/
-node scripts/use-reference-mask.js  # dalla matrice di riferimento
+node scripts/build-mask.js          # from the silhouettes in assets/gallop/
+node scripts/use-reference-mask.js  # from the reference matrix
 ```
 
-`build-mask.js` accetta qualunque risoluzione di griglia: converte una sequenza
-di immagini in scala di grigi, applica una soglia, sottocampiona e scrive le
-matrici booleane. Cambiando le silhouette in `assets/gallop/` e rilanciandolo,
-la sagoma cambia senza toccare una riga del renderer.
+`build-mask.js` accepts any grid resolution: it converts a sequence of images to
+greyscale, applies a threshold, subsamples and writes the boolean matrices.
+Change the silhouettes in `assets/gallop/` and re-run it, and the shape changes
+without touching a line of the renderer.
 
-## Struttura
+## Structure
 
 ```
-index.html                  la pagina, senza interfaccia
-src/app.js                  maschera, galoppo, zoom, pan
-src/style.css               schermo intero, dvh, safe area
-src/data/mask-frames.json   matrici booleane — generato
-assets/photos/thumb/        158 ritagli quadrati 320 px (WebP)
-assets/photos/hd/           158 ritagli quadrati 1024 px (WebP)
-assets/photos/xl/           158 ritagli quadrati 1536 px nativi (WebP)
-assets/photos/full/         158 fotogrammi interi (visore)
-assets/gallop/              silhouette sorgente per build-mask.js
-scripts/                    generatori della maschera
-research/                   misure e spec del comportamento
-prototypes/canvas-clone/    variante su canvas 2D, con pan/zoom/filtri
+index.html                  the page, no interface
+src/app.js                  mask, gallop, zoom, pan
+src/style.css               fullscreen, dvh, safe area
+src/data/mask-frames.json   boolean matrices — generated
+assets/photos/thumb/        158 square 320 px crops (WebP)
+assets/photos/hd/           158 square 1024 px crops (WebP)
+assets/photos/xl/           158 square native 1536 px crops (WebP)
+assets/photos/full/         158 whole frames (viewer)
+assets/gallop/              source silhouettes for build-mask.js
+scripts/                    mask and photo generators
+research/                   measurements and behavioural specs
 ```
 
-## Nota sul materiale di riferimento
+## A note on the reference material
 
-Il comportamento è stato ricostruito misurando un sito esistente. I bundle di
-produzione, il DOM e i dati grezzi di quel sito stanno in `_reference/` e
-`research/raw/`, **esclusi dal repository**: sono materiale di studio locale e
-non vanno pubblicati. Le misure e le specifiche derivate restano in `research/`.
+The behaviour was reconstructed by measuring an existing site. That site's
+production bundles, DOM and raw data live in `_reference/` and `research/raw/`,
+**excluded from this repository**: they are local study material and are not to
+be published. The derived measurements and specs stay in `research/`.
 
-La matrice in `src/data/mask-frames.json` è la sagoma estratta dal sito di
-riferimento, non una silhouette originale: è una scelta esplicita per ottenere
-una replica esatta. Per sostituirla con una propria basta `scripts/build-mask.js`.
+The matrix in `src/data/mask-frames.json` is the silhouette extracted from the
+reference site, not an original one — a deliberate choice, to get an exact
+replica. Replacing it with your own is what `scripts/build-mask.js` is for.
 
-## Licenza
+## License
 
-MIT — vedi [LICENSE](LICENSE). La licenza copre il codice, non le fotografie.
+[MIT](LICENSE) © Andrea Lando ([Acci4i0](https://github.com/Acci4i0)).
+Covers the code, not the photographs.
